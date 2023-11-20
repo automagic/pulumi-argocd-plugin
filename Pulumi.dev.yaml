@@ -1,2 +1,3 @@
 config:
+  docker:host: unix:///Users/james/.colima/docker.sock
   eks-workshop-argocd-deploy:clusterStackRef: team-ce/eks-workshop-argocd/dev

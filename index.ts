@@ -3,8 +3,6 @@ import * as k8s from "@pulumi/kubernetes";
 import * as aws from "@pulumi/aws";
 import * as awsx from "@pulumi/awsx";
 
-import * as docker from "@pulumi/docker";
-
 const repository = new aws.ecr.Repository("argocd-apps");
 
 const repositoryPolicy = new aws.ecr.RepositoryPolicy("myrepositorypolicy", {
@@ -37,7 +35,8 @@ const repositoryPolicy = new aws.ecr.RepositoryPolicy("myrepositorypolicy", {
 
 const image = new awsx.ecr.Image("argocd-pulumi-sidecar", {
     repositoryUrl: repository.repositoryUrl,
-    path: "./sidecar"
+    platform: 'linux/amd64',
+    dockerfile: "./sidecar/Dockerfile"
 });
 
 const pulumiConfig = new pulumi.Config();
@@ -100,11 +99,12 @@ spec:
       "init.sh": `
 #!/bin/bash
 npm ci
-pulumi down -y --non-interactive -s team-ce/dev --logtostderr 1>&2
-pulumi up -f -y --non-interactive -s team-ce/dev --logtostderr 1>&2`,
+pulumi login --local
+pulumi down -y --non-interactive -s dev
+pulumi up -f -y --non-interactive -s dev`,
       "generate.sh": `
 #!/bin/bash
-find /tmp/yaml -name '*.yaml' -exec cat {} +`,
+find ./yaml -name '*.yaml' -exec cat {} +`,
     },
   },
   { provider, dependsOn: [ns] }
