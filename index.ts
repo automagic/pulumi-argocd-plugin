@@ -99,9 +99,8 @@ spec:
       "init.sh": `
 #!/bin/bash
 npm ci
-pulumi login --local
-pulumi down -y --non-interactive -s dev
-pulumi up -f -y --non-interactive -s dev`,
+pulumi down -y --non-interactive -s team-ce/dev --logtostderr 1>&2
+pulumi up -f -y --non-interactive -s team-ce/dev --logtostderr 1>&2`,
       "generate.sh": `
 #!/bin/bash
 find ./yaml -name '*.yaml' -exec cat {} +`,
@@ -204,12 +203,12 @@ const deploymentPatch = new k8s.apps.v1.DeploymentPatch(
 );
 
 
-const app = new k8s.apiextensions.CustomResource("example-application", {
+const app = new k8s.apiextensions.CustomResource("pulumi-application", {
     apiVersion: "argoproj.io/v1alpha1",
     kind: "Application",
     metadata: {
         namespace: "argocd",
-        name: "argocd-application"
+        name: "pulumi-application"
     },
     spec: {
         destination: {

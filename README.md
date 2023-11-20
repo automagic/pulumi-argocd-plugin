@@ -83,6 +83,7 @@ const app = new k8s.apiextensions.CustomResource("pulumi-application", {
 
 Note the `plugin` declaration under `source`, telling ArgoCD to use our sidecar to render the manifests.
 
+![Rendered Application](image-1.png)
 
 # How it works
 
