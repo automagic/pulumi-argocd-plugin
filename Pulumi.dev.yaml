@@ -1,0 +1,2 @@
+config:
+  eks-workshop-argocd-deploy:clusterStackRef: team-ce/eks-workshop-argocd/dev

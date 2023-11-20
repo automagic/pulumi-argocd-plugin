@@ -1,0 +1,12 @@
+{
+    "name": "eks-workshop-argocd-deploy",
+    "main": "index.ts",
+    "devDependencies": {
+        "@types/node": "^16"
+    },
+    "dependencies": {
+        "@pulumi/docker": "^4.4.5",
+        "@pulumi/kubernetes": "^4.5.4",
+        "@pulumi/pulumi": "^3.0.0"
+    }
+}
