@@ -1,6 +1,7 @@
 {
     "name": "eks-workshop-argocd-deploy",
     "main": "index.ts",
+    "version": "0.0.1",
     "devDependencies": {
         "@types/node": "^16"
     },
