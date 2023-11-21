@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as k8s from "@pulumi/kubernetes";
 import * as aws from "@pulumi/aws";
 import * as awsx from "@pulumi/awsx";
+import { readFileSync } from "fs";
 
 const repository = new aws.ecr.Repository("argocd-apps");
 
@@ -56,7 +57,10 @@ const ns = new k8s.core.v1.Namespace( "argocd-ns", { metadata: { name: "argocd" 
 const argocd = new k8s.helm.v3.Chart( "argocd", {
     namespace:  pulumi.interpolate`${ns.metadata.name}`,
     chart: "argo-cd",
-    fetchOpts: { repo: "https://argoproj.github.io/argo-helm" },
+    fetchOpts: { 
+      repo: "https://argoproj.github.io/argo-helm", 
+      version: '5.51.4' 
+    },
     values: {
       installCRDs: true,
       createClusterRoles: true,
@@ -134,7 +138,12 @@ const deploymentPatch = new k8s.apps.v1.DeploymentPatch(
               },
               env: [{
                 name: 'PULUMI_ACCESS_TOKEN',
-                value: 'pul-7274d7b8df3ee755eb575498eea30ca34f3e1f22'      
+                valueFrom: {
+                  secretKeyRef: {
+                    name: 'pulumi-access-token',
+                    key: 'pulumi-access-token'
+                  }
+                }
               }],
               volumeMounts: [
                 {
@@ -227,4 +236,4 @@ const app = new k8s.apiextensions.CustomResource("pulumi-application", {
     },
 });
 
-// // export const url = argocd.getResourceProperty("v1/Service", `${name}/argocd-server`, "status").apply(status => status.loadBalancer.ingress[0].hostname)
+export const readme = readFileSync("./Pulumi.README.md").toString();

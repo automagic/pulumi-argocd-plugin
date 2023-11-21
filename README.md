@@ -135,6 +135,9 @@ const deploymentPatch = new k8s.apps.v1.DeploymentPatch(
     metadata: {
       name: deployment.metadata.name,
       namespace: deployment.metadata.namespace,
+      annotations: {
+        "pulumi.com/patchForce": "true",
+      }
     },
     spec: {
       template: {
