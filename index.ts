@@ -3,6 +3,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as aws from "@pulumi/aws";
 import * as awsx from "@pulumi/awsx";
 import { readFileSync } from "fs";
+import * as operator from "./operator";
 
 const repository = new aws.ecr.Repository("argocd-apps");
 
@@ -52,6 +53,13 @@ const provider = new k8s.Provider("k8s", {
   enableServerSideApply: true
 });
 
+// const pulumiNS = new k8s.core.v1.Namespace( "pulumi-ns", { metadata: { name: "pulumi" }, }, { provider });
+
+const pulumiOperator = new operator.PulumiKubernetesOperator('pulumi-operator', {
+  namespace: 'default',
+  provider,
+});
+
 const ns = new k8s.core.v1.Namespace( "argocd-ns", { metadata: { name: "argocd" }, }, { provider });
 
 const argocd = new k8s.helm.v3.Chart( "argocd", {
@@ -70,6 +78,11 @@ const argocd = new k8s.helm.v3.Chart( "argocd", {
           type: "NodePort",
         },
       },
+      configs: {
+        params: {
+          "application.namespaces": "*"
+        }
+      }
     },
     // The helm chart is using a deprecated apiVersion,
     // So let's transform it
@@ -86,10 +99,37 @@ const argocd = new k8s.helm.v3.Chart( "argocd", {
 
 const pluginName = "pulumi-plugin";
 
-const configMap = new k8s.core.v1.ConfigMap( `${pluginName}-config`, {
-    metadata: { name: `${pluginName}-config`, namespace: "argocd" },
-    data: {
-      "plugin.yaml": `
+// const configMap = new k8s.core.v1.ConfigMap( `${pluginName}-config`, {
+//     metadata: { name: `${pluginName}-config`, namespace: "argocd" },
+//     data: {
+//       "plugin.yaml": `
+// apiVersion: argoproj.io/v1alpha1
+// kind: ConfigManagementPlugin
+// metadata:
+//   name: ${pluginName}
+// spec:
+//   version: v1.0
+//   init:
+//     command: [sh, -c, /scripts/init.sh]
+//   generate:
+//     command: [sh, -c, /scripts/generate.sh]`,
+//       "init.sh": `
+// #!/bin/bash
+// npm ci
+// pulumi down -y --non-interactive -s team-ce/dev --logtostderr 1>&2 
+// pulumi up -f -y --non-interactive -s team-ce/dev --logtostderr 1>&2`,
+//       "generate.sh": `
+// #!/bin/bash
+// find ./yaml -name '*.yaml' -exec cat {} +`,
+//     },
+//   },
+//   { provider, dependsOn: [ns] }
+// );
+
+const configMapStack = new k8s.core.v1.ConfigMap( `${pluginName}-config-stack`, {
+  metadata: { name: `${pluginName}-config-stack`, namespace: "argocd" },
+  data: {
+    "plugin.yaml": `
 apiVersion: argoproj.io/v1alpha1
 kind: ConfigManagementPlugin
 metadata:
@@ -100,14 +140,32 @@ spec:
     command: [sh, -c, /scripts/init.sh]
   generate:
     command: [sh, -c, /scripts/generate.sh]`,
-      "init.sh": `
+    "init.sh": `
 #!/bin/bash
-npm ci
-pulumi down -y --non-interactive -s team-ce/dev --logtostderr 1>&2
-pulumi up -f -y --non-interactive -s team-ce/dev --logtostderr 1>&2`,
-      "generate.sh": `
+echo "Initializing..."
+`,
+    "generate.sh": `
 #!/bin/bash
-find ./yaml -name '*.yaml' -exec cat {} +`,
+cat <<EOF 
+apiVersion: pulumi.com/v1
+kind: Stack
+metadata:
+  name: $ARGOCD_APP_NAME
+  namespace: $ARGOCD_APP_NAMESPACE
+spec:
+  envRefs:
+    PULUMI_ACCESS_TOKEN:
+      type: Secret
+      secret:
+        name: pulumi-access-token
+        key: pulumi-access-token
+  stack: $ARGOCD_ENV_STACK
+  projectRepo: $ARGOCD_APP_SOURCE_REPO_URL
+  repoDir: $ARGOCD_APP_SOURCE_PATH
+  commit: $ARGOCD_APP_REVISION
+  initOnCreate: true
+  destroyOnFinalize: true
+EOF`,
     },
   },
   { provider, dependsOn: [ns] }
@@ -174,7 +232,7 @@ const deploymentPatch = new k8s.apps.v1.DeploymentPatch(
             {
               name: 'config',
               configMap: {
-                name: pulumi.interpolate`${configMap.metadata.name}`,
+                name: pulumi.interpolate`${configMapStack.metadata.name}`,
                 items: [{ 
                     key: 'plugin.yaml',
                     path: 'plugin.yaml'
@@ -184,7 +242,7 @@ const deploymentPatch = new k8s.apps.v1.DeploymentPatch(
             {
                 name: 'scripts',
                 configMap: {
-                  name: pulumi.interpolate`${configMap.metadata.name}`,
+                  name: pulumi.interpolate`${configMapStack.metadata.name}`,
                   defaultMode: 0o755,
                   items: [{ 
                       key: 'generate.sh',
@@ -211,12 +269,11 @@ const deploymentPatch = new k8s.apps.v1.DeploymentPatch(
   { provider }
 );
 
-
 const app = new k8s.apiextensions.CustomResource("pulumi-application", {
     apiVersion: "argoproj.io/v1alpha1",
     kind: "Application",
     metadata: {
-        namespace: "argocd",
+        namespace:  pulumi.interpolate`${ns.metadata.name}`,
         name: "pulumi-application"
     },
     spec: {
@@ -230,10 +287,15 @@ const app = new k8s.apiextensions.CustomResource("pulumi-application", {
             path: "./",
             targetRevision: "main",
             plugin: {
-                name: 'pulumi-plugin-v1.0'
+                name: 'pulumi-plugin-v1.0',
+                env: [{
+                  name: 'STACK',
+                  value: 'team-ce/app/dev'
+                }]
             }
         }
     },
-});
+}, {provider, dependsOn: [deploymentPatch]});
+
 
 export const readme = readFileSync("./Pulumi.README.md").toString();
