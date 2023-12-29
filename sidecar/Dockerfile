@@ -2,7 +2,7 @@
 FROM alpine:latest
 
 # Install curl and unzip
-RUN apk add --no-cache curl unzip bash npm
+RUN apk add --no-cache curl unzip bash npm jq
 
 # Download and install Pulumi
 RUN curl -fsSL https://get.pulumi.com | \

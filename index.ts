@@ -86,7 +86,7 @@ const argocd = new k8s.helm.v3.Chart( "argocd", {
 
 const pluginName = "pulumi-plugin";
 
-const configMap = new k8s.core.v1.ConfigMap( `${pluginName}-config`, {
+const configMap = new k8s.core.v1.ConfigMap(`${pluginName}-config`, {
     metadata: { name: `${pluginName}-config`, namespace: "argocd" },
     data: {
       "plugin.yaml": `
@@ -103,8 +103,12 @@ spec:
       "init.sh": `
 #!/bin/bash
 npm ci
-pulumi down -y --non-interactive -s team-ce/dev --logtostderr 1>&2
-pulumi up -f -y --non-interactive -s team-ce/dev --logtostderr 1>&2`,
+export PULUMI_CONFIG_PASSPHRASE=''
+pulumi login --local
+if [ "false" == "$(pulumi stack ls --json | jq 'any(.[]; .name == "local")')" ]; then
+  pulumi stack init local --non-interactive --logtostderr 1>&2
+fi
+pulumi preview --non-interactive -s local --logtostderr 1>&2`,
       "generate.sh": `
 #!/bin/bash
 find ./yaml -name '*.yaml' -exec cat {} +`,
