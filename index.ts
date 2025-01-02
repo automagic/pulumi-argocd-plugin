@@ -112,7 +112,10 @@ const pluginName = "pulumi-plugin";
 const configMap = new k8s.core.v1.ConfigMap(
   `${pluginName}-config`,
   {
-    metadata: { name: `${pluginName}-config`, namespace: ns.metadata.apply(metadata => metadata.name)},
+    metadata: {
+      name: `${pluginName}-config`,
+      namespace: ns.metadata.apply((metadata) => metadata.name),
+    },
     data: {
       "plugin.yaml": `
 apiVersion: argoproj.io/v1alpha1
@@ -192,19 +195,7 @@ spec:
   workspaceTemplate:
     spec:
       image: pulumi/pulumi:3.134.1-nonroot
-      `,
-      "init.sh": `
-#!/bin/bash
-npm ci
-export PULUMI_CONFIG_PASSPHRASE=''
-pulumi login --local
-if [ "false" == "$(pulumi stack ls --json | jq 'any(.[]; .name == "local")')" ]; then
-  pulumi stack init local --non-interactive --logtostderr 1>&2
-fi
-pulumi preview --non-interactive -s local --logtostderr 1>&2`,
-      "generate.sh": `
-#!/bin/bash
-find ./yaml -name '*.yaml' -exec cat {} +`,
+      `
     },
   },
   { provider, dependsOn: [ns] }
@@ -274,14 +265,6 @@ const patchRepoServer = (args: pulumi.ResourceTransformArgs) => {
               name: pulumi.interpolate`${configMap.metadata.name}`,
               defaultMode: 0o755,
               items: [
-                {
-                  key: "generate.sh",
-                  path: "generate.sh",
-                },
-                {
-                  key: "init.sh",
-                  path: "init.sh",
-                },
                 {
                   key: "stack.yaml.envsubst",
                   path: "stack.yaml.envsubst",
@@ -384,5 +367,3 @@ const app = new k8s.apiextensions.CustomResource(
   },
   { provider, dependsOn: [configMap, accessTokenSecret, argocd] }
 );
-
-// export const readme = readFileSync("./Pulumi.README.md").toString();
