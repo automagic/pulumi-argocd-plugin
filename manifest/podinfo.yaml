@@ -20,5 +20,5 @@ spec:
       - name: pulumi
         map: 
           org: initech
-          project: app
+          project: podinfo-ts
           stack: test
