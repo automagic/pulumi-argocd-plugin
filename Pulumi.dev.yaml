@@ -1,4 +1,4 @@
 environment:
+  - shared/aws-dev
   - aws-eks-typescript-simple/dev
-config:
-  eks-workshop-argocd-deploy:clusterStackRef: initech/aws-eks-typescript-simple/dev
+  - aws-eks-typescript-simple/dev-outputs

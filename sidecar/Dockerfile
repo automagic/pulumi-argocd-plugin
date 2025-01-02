@@ -2,12 +2,12 @@
 FROM alpine:latest
 
 # Install curl and unzip
-RUN apk add --no-cache curl unzip bash npm jq
+RUN apk add --no-cache curl unzip bash npm jq envsubst
 
 # Download and install Pulumi
-RUN curl -fsSL https://get.pulumi.com | \
-        sh && \
-        cp ~/.pulumi/bin/* /usr/local/bin
+# RUN curl -fsSL https://get.pulumi.com | \
+#         sh && \
+#         cp ~/.pulumi/bin/* /usr/local/bin
 
 RUN adduser -u 999 -G nogroup cmp-plugin -D -s /bin/bash
 
