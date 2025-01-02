@@ -1,2 +1,4 @@
-config:
-  eks-workshop-argocd-deploy:clusterStackRef: team-ce/eks-workshop-argocd/dev
+environment:
+  - shared/aws-dev
+  - aws-eks-typescript-simple/dev
+  - aws-eks-typescript-simple/dev-outputs

@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: 
+  name: pulumi-application
+  namespace: default
+spec: 
+  destination: 
+    namespace: default
+    server: "https://kubernetes.default.svc"
+  syncPolicy: 
+    automated: 
+      prune: true
+  project: default
+  source: 
+    repoURL: "https://github.com/pulumi-initech/podinfo-ts.git"
+    path: "./"
+    targetRevision: main
+    plugin: 
+      parameters: 
+      - name: pulumi
+        map: 
+          org: initech
+          project: app
+          stack: test
